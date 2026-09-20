@@ -1,0 +1,7 @@
+# Rewritten by theme-switch on every toggle; live state, not configuration.
+kitty/current-theme.conf
+
+# Backups made by `make install` when it finds a real file where a symlink goes.
+*.pre-repo.bak
+
+.claude/

@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# Switch kitty + helix between a light and a dark theme in one go.
+#
+#   theme-switch             toggle between light and dark
+#   theme-switch light       force light
+#   theme-switch dark        force dark
+#   theme-switch auto        match the desktop's own light/dark preference
+#   theme-switch auto --watch  follow that preference until killed
+#   theme-switch status      print the current mode
+#
+# Running kitty and helix instances pick the change up immediately via SIGUSR1,
+# which both of them treat as "reload your config".
+
+set -euo pipefail
+
+# --- what each mode means -----------------------------------------------------
+# kitty themes live in KITTY_THEME_DIR as <name>.conf; helix themes are names
+# from `hx --health` / the runtime themes dir. Swap these to change your pair.
+KITTY_THEME_DARK="catppuccin-frappe"
+KITTY_THEME_LIGHT="solarized-light"
+HELIX_THEME_DARK="catppuccin_frappe"
+HELIX_THEME_LIGHT="solarized_light"
+
+KITTY_THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/themes"
+KITTY_CURRENT="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/current-theme.conf"
+HELIX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/helix/config.toml"
+
+OS=$(uname -s)
+
+# How often `auto --watch` re-reads the preference on macOS, which has nothing
+# to wait on. Ignored everywhere else, where the portal pushes the change.
+POLL_SECONDS="${THEME_SWITCH_POLL_SECONDS:-2}"
+
+# On Linux the XDG desktop portal is the one preference every toolkit agrees on:
+# GTK, Qt and Plasma all read this same value, so `auto` lands wherever the rest
+# of the desktop already is. Plasma's own kdeglobals ColorScheme is deliberately
+# not used -- it is Plasma-only and stores a scheme *name* rather than a
+# light/dark flag, so reading it means string-matching /Light$/ and losing to
+# any third-party scheme.
+PORTAL_ARGS=(
+  --session
+  --dest org.freedesktop.portal.Desktop
+  --object-path /org/freedesktop/portal/desktop
+)
+
+die() { printf 'theme-switch: %s\n' "$1" >&2; exit 1; }
+
+# Current mode is derived from helix's config rather than a state file, so it
+# stays correct even if the config is edited by hand or synced from elsewhere.
+current_mode() {
+  local theme
+  theme=$(sed -n 's/^[[:space:]]*theme[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' "$HELIX_CONFIG" | head -1)
+  case "$theme" in
+    "$HELIX_THEME_LIGHT") echo light ;;
+    "$HELIX_THEME_DARK")  echo dark ;;
+    *)                    echo unknown ;;
+  esac
+}
+
+# Values are fixed by the freedesktop spec: 0 = no preference, 1 = dark,
+# 2 = light. 0 means the user never chose, not "light", so it falls back to dark
+# the same way an unknown theme does in toggle.
+portal_mode() {
+  local raw value
+  raw=$(gdbus call "${PORTAL_ARGS[@]}" \
+          --method org.freedesktop.portal.Settings.ReadOne \
+          org.freedesktop.appearance color-scheme 2>/dev/null) \
+    || die "no color-scheme preference from the portal (is xdg-desktop-portal running?)"
+  value=$(printf '%s' "$raw" | sed -n 's/.*uint32 \([0-9]\+\).*/\1/p')
+  case "$value" in
+    1) echo dark ;;
+    2) echo light ;;
+    *) echo dark ;;
+  esac
+}
+
+# macOS stores only the dark case: AppleInterfaceStyle is the string "Dark" in
+# dark mode and *absent* in light mode, so a failed read is the light answer
+# rather than an error. There is no "no preference" state to fall back from,
+# which is why this returns light where the portal returns dark.
+#
+# `osascript -e '... get dark mode'` answers the same question, but it goes
+# through System Events and so needs an Automation grant -- a TCC prompt that a
+# background agent cannot answer. Reading the default needs no permission.
+macos_mode() {
+  if [[ $(defaults read -g AppleInterfaceStyle 2>/dev/null) == Dark ]]; then
+    echo dark
+  else
+    echo light
+  fi
+}
+
+system_mode() {
+  case "$OS" in
+    Darwin) macos_mode ;;
+    *)      portal_mode ;;
+  esac
+}
+
+apply_kitty() {
+  local theme_file="$KITTY_THEME_DIR/$1.conf"
+  [[ -f $theme_file ]] || die "no kitty theme at $theme_file"
+  # current-theme.conf is `include`d by kitty.conf; replace its contents in
+  # place so the symlink into Dropbox survives.
+  cat "$theme_file" > "$KITTY_CURRENT"
+  pkill -USR1 -x kitty 2>/dev/null || true
+}
+
+apply_helix() {
+  [[ -f $HELIX_CONFIG ]] || die "no helix config at $HELIX_CONFIG"
+  local tmp
+  # Only the active (uncommented) theme line is touched; commented-out
+  # alternatives in the config are left alone. The result is written back
+  # *through* the path rather than with `sed -i`: in-place editing is the one
+  # place GNU and BSD sed disagree (BSD wants an argument to -i, GNU needs
+  # --follow-symlinks), and writing through the path keeps a symlink into this
+  # repo intact on both instead of replacing it with a regular file.
+  # An explicit template: BSD mktemp (macOS) requires one, GNU accepts it.
+  tmp=$(mktemp "${TMPDIR:-/tmp}/theme-switch.XXXXXX") || die "could not create a temp file"
+  sed "s/^[[:space:]]*theme[[:space:]]*=.*/theme = \"$1\"/" "$HELIX_CONFIG" > "$tmp"
+  cat "$tmp" > "$HELIX_CONFIG"
+  rm -f "$tmp"
+  pkill -USR1 -x hx 2>/dev/null || true
+}
+
+apply_mode() {
+  case "$1" in
+    light) apply_kitty "$KITTY_THEME_LIGHT"; apply_helix "$HELIX_THEME_LIGHT" ;;
+    dark)  apply_kitty "$KITTY_THEME_DARK";  apply_helix "$HELIX_THEME_DARK" ;;
+  esac
+  printf 'theme: %s\n' "$1"
+}
+
+LAST_MODE=""
+
+# Applies only on an actual change, so the portal's chattier neighbours (it
+# re-signals for accent-colour and contrast too) and the macOS poll below do not
+# reload kitty and helix for nothing.
+apply_if_changed() {
+  local now
+  now=$(system_mode)
+  if [[ $now != "$LAST_MODE" ]]; then
+    LAST_MODE=$now
+    apply_mode "$now"
+  fi
+}
+
+# Linux: the portal announces the change, so block on its signal and re-read.
+# Re-reading beats parsing the value out of the signal line: one extra
+# round-trip, no dependence on gdbus's printing format.
+watch_portal() {
+  gdbus monitor "${PORTAL_ARGS[@]}" |
+    grep --line-buffered 'SettingChanged.*color-scheme' |
+    while read -r _; do
+      apply_if_changed
+    done
+  # Only reached if the monitor itself ended (portal restart, bus drop). That is
+  # never a normal exit for a watcher, so fail loudly and let the supervisor
+  # restart us rather than leaving a live session with nothing watching it.
+  die "portal monitor exited"
+}
+
+# macOS: nothing announces the change to a shell. The switch is broadcast as the
+# AppleInterfaceThemeChangedNotification distributed notification, which needs a
+# compiled listener to subscribe to -- there is no `defaults watch`. So this
+# polls instead. A `defaults read` is a few milliseconds, so a couple of seconds
+# between them costs nothing. For an instant, event-driven switch, install
+# dark-mode-notify and point it at `theme-switch auto` rather than running this.
+watch_poll() {
+  while :; do
+    sleep "$POLL_SECONDS"
+    apply_if_changed
+  done
+}
+
+# Apply once up front so a session that started out of sync is corrected, then
+# follow whichever mechanism this OS offers.
+watch_system() {
+  apply_if_changed
+  case "$OS" in
+    Darwin) watch_poll ;;
+    *)      watch_portal ;;
+  esac
+}
+
+case "${1:-toggle}" in
+  light|dark)
+    apply_mode "$1"
+    ;;
+  toggle)
+    # An unknown current theme falls back to dark, so a toggle always lands
+    # somewhere valid.
+    if [[ $(current_mode) == light ]]; then apply_mode dark; else apply_mode light; fi
+    ;;
+  auto)
+    case "${2:-once}" in
+      once)          apply_mode "$(system_mode)" ;;
+      -w|--watch)    watch_system ;;
+      *)             die "unknown argument '$2' (expected: --watch)" ;;
+    esac
+    ;;
+  status)
+    current_mode
+    ;;
+  -h|--help|help)
+    sed -n '2,12p' "$0" | sed 's/^# \?//'
+    ;;
+  *)
+    die "unknown argument '$1' (expected: light, dark, toggle, auto, status)"
+    ;;
+esac

@@ -1,0 +1,18 @@
+[Unit]
+Description=Follow the desktop light/dark preference in kitty and helix
+# The watcher talks to the XDG desktop portal on the session bus, so it is only
+# meaningful inside a graphical session and should go away with it.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/theme-switch auto --watch
+# `auto --watch` never exits on purpose -- it dies if the portal is missing at
+# startup or the monitor drops -- so any exit is worth retrying. The delay keeps
+# a portal that is slow to appear during login from burning the start limit.
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

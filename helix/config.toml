@@ -1,0 +1,68 @@
+# theme="dracula"
+# theme="solarized_light"
+# theme="ayu_mirage"
+# theme = "zed_onedark"
+# theme = "everforest_dark"
+theme = "solarized_light"
+
+[editor]
+mouse = true
+auto-format = true
+middle-click-paste = true
+cursorline = true
+true-color = true
+scrolloff = 7
+completion-replace = true
+rulers = [90]
+bufferline = "always"
+color-modes = true
+text-width = 90
+
+
+[editor.statusline]
+left = ["mode", "spinner", "version-control"]
+center = ["file-name"]
+right = ["diagnostics", "file-type", "file-encoding", "position", "position-percentage"]
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+[editor.lsp]
+display-messages = true
+
+[editor.file-picker]
+follow-symlinks = false
+
+[editor.smart-tab]
+enable = false
+
+[keys.normal.space.c]
+b = [":write-all", ":run-shell-command cargo build"]
+r = [":write-all", ":run-shell-command cargo run > /dev/null"]
+
+[keys.normal.space]
+space = ["command_palette"]
+
+[keys.normal]
+C-j = ["move_line_down","move_line_down","move_line_down","move_line_down","move_line_down"]
+C-k = ["move_line_up","move_line_up","move_line_up","move_line_up","move_line_up"]
+
+[keys.normal."\\"]
+c = ":buffer-close"
+d = ":theme onedark"
+f = ["move_char_right", "move_prev_word_start", "move_next_word_start", "search_selection"]
+F = ["move_char_right", "move_prev_word_start", "move_next_word_start", "search_selection", "global_search"]
+l = ":theme onelight"
+o = [
+  ':sh rm -f /tmp/unique-file',
+  ':insert-output yazi %{buffer_name} --chooser-file=/tmp/unique-file',
+  ':insert-output echo "\x1b[?1049h\x1b[?2004h" > /dev/tty',
+  ':open %sh{cat /tmp/unique-file}',
+  ':redraw',
+]
+q = ":quit-all"
+s = ["move_char_right", "move_prev_word_start", "move_next_word_start"]
+w = ":write-all"
+x = ":write-quit-all"
