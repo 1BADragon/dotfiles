@@ -5,3 +5,7 @@ kitty/current-theme.conf
 *.pre-repo.bak
 
 .claude/
+
+# Rewritten by theme-switch on every toggle, exactly like kitty's
+# current-theme.conf: live state, not configuration.
+waybar/current-colors.css

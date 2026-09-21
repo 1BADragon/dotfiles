@@ -1,0 +1,6 @@
+/* Breeze Light, from /usr/share/color-schemes/BreezeLight.colors.
+   Written over current-colors.css by theme-switch; not imported directly. */
+@define-color bar_bg     #eff0f1;
+@define-color bar_fg     #232629;
+@define-color bar_dim    #707d8a;
+@define-color bar_edge   rgba(0, 0, 0, 0.12);

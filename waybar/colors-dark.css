@@ -1,0 +1,6 @@
+/* Breeze Dark, from /usr/share/color-schemes/BreezeDark.colors.
+   Written over current-colors.css by theme-switch; not imported directly. */
+@define-color bar_bg     #202326;
+@define-color bar_fg     #fcfcfc;
+@define-color bar_dim    #a1a9b1;
+@define-color bar_edge   rgba(0, 0, 0, 0.35);

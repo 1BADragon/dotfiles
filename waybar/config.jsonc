@@ -1,0 +1,138 @@
+// A read-only status line for Plasma: the fields the taskbar shows, without
+// the interactions, since the Plasma panel auto-hides and still owns the tray,
+// volume and window list.
+//
+// Waybar is used rather than polybar because polybar is an X11 bar: it asks for
+// screen space with _NET_WM_STRUT_PARTIAL, which kwin_wayland ignores for
+// XWayland clients, so maximized windows covered it. Waybar reserves space
+// through the layer-shell protocol.
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+
+  "modules-left": ["custom/weather"],
+  "modules-center": ["clock"],
+  // The first three are silent by default and only appear when they have
+  // something to say, so they cost no width on an idle, healthy system.
+  "modules-right": [
+    "privacy",
+    "custom/updates",
+    "systemd-failed-units",
+    "cpu",
+    "memory",
+    "temperature",
+    "disk",
+    "network",
+    "custom/mouse",
+    "battery"
+  ],
+
+  // Shows only while the microphone is live or a screen is being shared.
+  // Waybar has no webcam type, so the camera LED remains the only indicator
+  // for that. Icons come from the GTK icon theme, which is Breeze here, so
+  // they match the rest of the desktop rather than needing an icon font.
+  "privacy": {
+    "icon-size": 12,
+    "icon-spacing": 6,
+    "transition-duration": 200,
+    "modules": [
+      { "type": "screenshare" },
+      { "type": "audio-in" }
+    ]
+  },
+
+  // Prints nothing when the system is up to date, which hides the module.
+  "custom/updates": {
+    "exec": "$HOME/Apps/bin/waybar-updates.sh",
+    "interval": 1800,
+    "tooltip": false
+  },
+
+  // Silent until a unit fails, then says how many.
+  "systemd-failed-units": {
+    "hide-on-ok": true,
+    "system": true,
+    "user": true,
+    "format": "{nr_failed} failed"
+  },
+
+  // Battery of the bluetooth mouse, which is otherwise invisible while the
+  // Plasma panel is hidden. The device is resolved at runtime by the script.
+  "custom/mouse": {
+    "exec": "$HOME/Apps/bin/waybar-mouse.sh",
+    "interval": 120,
+    "tooltip": false
+  },
+
+  // Same script and interval the polybar config used. It takes any ICAO
+  // station code and is deployed to ~/Apps/bin by `make bin`.
+  "custom/weather": {
+    "exec": "$HOME/Apps/bin/get_temp.py KAGS",
+    "interval": 90,
+    "tooltip": false
+  },
+
+  "clock": {
+    "interval": 10,
+    "format": "{:%a %b %d    %I:%M %p}",
+    "tooltip-format": "<tt>{calendar}</tt>"
+  },
+
+  "cpu": {
+    "interval": 2,
+    "format": "CPU {usage}%",
+    "states": { "warning": 70, "critical": 90 }
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "RAM {percentage}%",
+    "tooltip-format": "{used:0.1f}G of {total:0.1f}G    swap {swapPercentage}%",
+    "states": { "warning": 75, "critical": 90 }
+  },
+
+  // hwmon numbers shuffle between boots, so this points at the coretemp device
+  // by its stable platform path. temp1_input there is "Package id 0".
+  "temperature": {
+    "hwmon-path-abs": "/sys/devices/platform/coretemp.0/hwmon",
+    "input-filename": "temp1_input",
+    "critical-threshold": 85,
+    "interval": 5,
+    "format": "{temperatureC}°C"
+  },
+
+  "disk": {
+    "interval": 60,
+    "path": "/",
+    "format": "SSD {percentage_used}%",
+    "tooltip-format": "{free} free of {total}",
+    "states": { "warning": 85, "critical": 95 }
+  },
+
+  // Throughput rather than the interface name or SSID, and no interface is
+  // pinned so a device rename does not break it.
+  "network": {
+    "interval": 2,
+    "format": "↓ {bandwidthDownBytes}  ↑ {bandwidthUpBytes}",
+    "format-disconnected": "offline",
+    "tooltip-format": "{ifname}  {ipaddr}"
+  },
+
+  // Text rather than a glyph ramp: the ramp came from a different font than the
+  // labels beside it, and it could not say charging from discharging because
+  // format and format-charging drew the same five icons. The state is now
+  // spelled out, and only when it is not the ordinary discharging case.
+  "battery": {
+    "bat": "BAT0",
+    "adapter": "AC",
+    "full-at": 98,
+    "interval": 30,
+    "states": { "warning": 25, "critical": 10 },
+    "format": "BAT {capacity}%",
+    "format-charging": "BAT {capacity}% charging",
+    "format-plugged": "BAT {capacity}% plugged",
+    "format-full": "BAT full",
+    "tooltip-format": "{timeTo}"
+  }
+}

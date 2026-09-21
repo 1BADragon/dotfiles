@@ -1,0 +1,72 @@
+/* Breeze. Every colour is read from the system schemes rather than eyeballed:
+   /usr/share/color-schemes/Breeze{Light,Dark}.colors.
+
+   The light/dark palette lives in current-colors.css, which theme-switch
+   rewrites from colors-light.css or colors-dark.css and then reloads waybar
+   with SIGUSR2. waybar is GTK3, so it has no prefers-color-scheme media query,
+   and the appearance it reads from the portal only flips GTK's own dark-theme
+   setting -- it does not restyle explicit colours or expose a class to match.
+   Driving it from theme-switch keeps the bar on the same signal as kitty and
+   helix instead. */
+@import url("current-colors.css");
+
+* {
+  /* Plasma's own UI font. Nothing in the bar draws an icon glyph any more, so
+     there is no icon font in the stack to mismatch the text metrics. */
+  font-family: "Noto Sans", sans-serif;
+  font-size: 10pt;
+  /* Breeze is flat: no shadows, no rounding, no gradients. */
+  text-shadow: none;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+}
+
+window#waybar {
+  background-color: @bar_bg;
+  color: @bar_fg;
+  /* Breeze separates a panel from content with a hairline, not a border. */
+  border-bottom: 1px solid @bar_edge;
+}
+
+/* Plasma spaces panel items generously; tighter than that looks unlike Breeze. */
+.modules-left > widget > *,
+.modules-center > widget > *,
+.modules-right > widget > * {
+  padding: 0 10px;
+}
+
+/* Secondary readouts sit back; the clock is the one primary element.
+
+   This is set on the containers and inherited, rather than listed per module
+   id, for two reasons: a module added later cannot be forgotten and fall back
+   to the near-black window colour (which is what happened to #battery), and an
+   inherited value loses to any rule that matches the module directly, so the
+   .warning / .critical state classes below actually take effect. Listed as
+   `#cpu { color: ... }` they would not: an id selector outranks a class one,
+   so the muted colour would win and the thresholds would never show. */
+.modules-left,
+.modules-center,
+.modules-right {
+  color: @bar_dim;
+}
+
+#clock {
+  color: @bar_fg;
+  font-weight: bold;
+}
+
+/* Breeze semantic colours, identical in both schemes. */
+.warning  { color: #f67400; }
+.critical { color: #da4453; }
+
+#battery.charging { color: #27ae60; }
+
+/* These three are quiet by default, so when they do appear they should read as
+   notices rather than as more ambient numbers. An id selector outranks the
+   inherited container colour, which is what puts them above the muted grey. */
+#systemd-failed-units { color: #da4453; }
+#custom-updates       { color: #f67400; }
+#privacy              { color: #3daee9; }
+#network.disconnected { color: #da4453; }

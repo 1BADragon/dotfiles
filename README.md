@@ -12,7 +12,7 @@ make theme-auto   # optional: follow the desktop's light/dark preference
 ```
 
 `make theme` is enough on a machine that only runs kitty and helix, which
-includes any Mac: the i3 and polybar targets are Linux-only and are never
+includes any Mac: the i3 and waybar targets are Linux-only and are never
 deployed unless named. `make zsh` adds the shell on top.
 
 The zsh config expects [powerlevel10k][p10k] to be installed already — it is
@@ -28,21 +28,21 @@ Everything is opt-in — plain `make` deploys nothing, it just lists the targets
 Pick only what the machine actually needs:
 
 ```sh
-make theme      # kitty + helix + theme-switch (no i3/polybar required)
+make theme      # kitty + helix + theme-switch (no i3/waybar required)
 make all        # every component
-make kitty      # or any single component: helix, theme-switch, zsh, bin, i3, polybar
+make kitty      # or any single component: helix, theme-switch, zsh, waybar, bin, i3
 ```
 
 `make status` shows what is currently deployed; `make uninstall` removes the
 symlinks and `theme-switch`, leaving copied files alone.
 
-kitty and helix are **symlinked** into `~/.config`, so edits in this repo take
-effect immediately. Everything else is **copied**, as `deploy.sh` used to do.
+kitty, helix and waybar are **symlinked** into `~/.config`, so edits in this
+repo take effect immediately. Everything else is **copied**.
 
 ## theme-switch
 
-Switches kitty and helix between a dark and a light theme together, reloading
-already-running instances via `SIGUSR1`:
+Switches kitty, helix and waybar between a dark and a light theme together,
+reloading already-running instances by signal:
 
 ```sh
 theme-switch               # toggle
@@ -100,8 +100,58 @@ The agent's output goes to the unified log rather than a file:
 log show --predicate 'process == "theme-switch"' --last 10m
 ```
 
-`kitty/current-theme.conf` is generated — `theme-switch` rewrites it on every
-toggle, so it is gitignored.
+`kitty/current-theme.conf` and `waybar/current-colors.css` are generated —
+`theme-switch` rewrites them on every toggle, so both are gitignored.
+
+## waybar
+
+A read-only status line for Plasma: the fields the taskbar shows, without the
+interactions, for a setup where the Plasma panel auto-hides but still owns the
+tray, the volume and the window list.
+
+```
+weather            <clock>            privacy · updates · failed units ·
+                                      CPU · RAM · temp · SSD · net · mouse · battery
+```
+
+Three of those are silent by default and cost no width until they have
+something to say: `privacy` (microphone live or screen being shared),
+`custom/updates` (pending pacman updates, via `checkupdates`) and
+`systemd-failed-units`.
+
+### Why not polybar
+
+polybar is an X11 bar. It asks the window manager for screen space with
+`_NET_WM_STRUT_PARTIAL`, and under a Wayland session it can only run as an
+XWayland client, whose struts `kwin_wayland` does not apply to the Wayland
+workspace. The bar sets the property correctly and the compositor ignores it,
+so maximised windows open underneath and the bar covers their titlebars. The
+tell is that `_NET_WORKAREA` stays at the full screen size even with the Plasma
+panel on screen — the X11 work area is decoupled from the session entirely.
+Waybar reserves space through the layer-shell protocol instead, which KWin
+does honour. The old polybar config was removed rather than kept as a fallback.
+
+### Look
+
+Colours are read from Plasma's own schemes in
+`/usr/share/color-schemes/Breeze{Light,Dark}.colors` rather than eyeballed, and
+the bar uses Plasma's UI font. No icon font is involved: every readout is text,
+and `privacy` draws its icons from the GTK icon theme, which is Breeze here.
+
+waybar is GTK3, so it has no `prefers-color-scheme` media query, and the
+appearance it reads from the portal only flips GTK's own dark-theme setting —
+it does not restyle explicit colours or expose a class to match on. So the
+palette lives in `current-colors.css`, which `theme-switch` rewrites from
+`colors-light.css` or `colors-dark.css` before reloading waybar with `SIGUSR2`.
+The bar therefore follows the same signal kitty and helix do.
+
+### Hardware
+
+Module hardware is named for the machine this is deployed on: `BAT0`, the
+coretemp sensor by its stable platform path rather than a `/sys/class/hwmon`
+number that shuffles between boots, and no pinned network interface so a
+device rename does not break it. The bluetooth mouse is resolved at runtime by
+`bin/waybar-mouse.sh` rather than pinned by address.
 
 ## Licence
 

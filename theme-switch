@@ -25,6 +25,11 @@ KITTY_THEME_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/themes"
 KITTY_CURRENT="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/current-theme.conf"
 HELIX_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/helix/config.toml"
 
+# waybar is optional and Linux-only, so every use of these is guarded: a
+# machine without the bar installed just skips it.
+WAYBAR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
+WAYBAR_CURRENT="$WAYBAR_DIR/current-colors.css"
+
 OS=$(uname -s)
 
 # How often `auto --watch` re-reads the preference on macOS, which has nothing
@@ -123,10 +128,31 @@ apply_helix() {
   pkill -USR1 -x hx 2>/dev/null || true
 }
 
+# waybar is GTK3: no prefers-color-scheme, and the appearance it reads from the
+# portal only flips GTK's own dark-theme setting, which does not touch the
+# explicit colours in its stylesheet. So the palette is swapped here instead,
+# the same way kitty's current-theme.conf is, and waybar is told to reload.
+# SIGUSR2 is reload by default, the way SIGUSR1 is reload for kitty and helix.
+apply_waybar() {
+  local colors_file="$WAYBAR_DIR/colors-$1.css"
+  [[ -f $colors_file ]] || return 0
+  # Never fatal. The bar is optional next to the terminal and the editor, and a
+  # current-colors.css left dangling by a moved checkout must not abort a switch
+  # that already applied kitty and helix -- nor take `auto --watch` down with
+  # it, which the supervisor would then restart into the same failure.
+  # The braces put bash's own "cannot create" message inside the silenced
+  # block too; redirecting only cat's stderr would still leak it.
+  if ! { cat "$colors_file" > "$WAYBAR_CURRENT"; } 2>/dev/null; then
+    printf 'theme-switch: cannot write %s, skipping waybar\n' "$WAYBAR_CURRENT" >&2
+    return 0
+  fi
+  pkill -USR2 -x waybar 2>/dev/null || true
+}
+
 apply_mode() {
   case "$1" in
-    light) apply_kitty "$KITTY_THEME_LIGHT"; apply_helix "$HELIX_THEME_LIGHT" ;;
-    dark)  apply_kitty "$KITTY_THEME_DARK";  apply_helix "$HELIX_THEME_DARK" ;;
+    light) apply_kitty "$KITTY_THEME_LIGHT"; apply_helix "$HELIX_THEME_LIGHT"; apply_waybar light ;;
+    dark)  apply_kitty "$KITTY_THEME_DARK";  apply_helix "$HELIX_THEME_DARK";  apply_waybar dark ;;
   esac
   printf 'theme: %s\n' "$1"
 }

@@ -38,7 +38,15 @@ KITTY_LINKS := \
 	$(CONFIG)/kitty/kitty.conf:kitty/kitty.conf \
 	$(CONFIG)/kitty/current-theme.conf:kitty/current-theme.conf \
 	$(CONFIG)/kitty/themes:kitty/themes
-ALL_LINKS := $(HELIX_LINKS) $(KITTY_LINKS)
+# Symlinked rather than copied, for the same reason kitty and helix are: this
+# is a config that gets tuned, and a copy means a reinstall after every tweak.
+WAYBAR_LINKS := \
+	$(CONFIG)/waybar/config.jsonc:waybar/config.jsonc \
+	$(CONFIG)/waybar/style.css:waybar/style.css \
+	$(CONFIG)/waybar/colors-light.css:waybar/colors-light.css \
+	$(CONFIG)/waybar/colors-dark.css:waybar/colors-dark.css \
+	$(CONFIG)/waybar/current-colors.css:waybar/current-colors.css
+ALL_LINKS := $(HELIX_LINKS) $(KITTY_LINKS) $(WAYBAR_LINKS)
 
 # Symlink each <link>:<target> pair, preserving any real file already there.
 define link_all
@@ -55,12 +63,12 @@ define link_all
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help theme all zsh bin i3 polybar kitty helix theme-switch theme-auto status diff uninstall
+.PHONY: help theme all zsh bin i3 waybar kitty helix theme-switch theme-auto status diff uninstall
 
 help:
 	@echo 'Dotfiles installer -- nothing is deployed unless you name a target.'
 	@echo
-	@echo '  make theme         kitty + helix + theme-switch (no i3/polybar needed)'
+	@echo '  make theme         kitty + helix + theme-switch (no i3/waybar needed)'
 	@echo '  make all           every component below'
 	@echo
 	@echo 'Components:'
@@ -70,10 +78,10 @@ help:
 	@echo '  make theme-auto    install the theme-switch auto-follow service'
 	@echo '                     (systemd unit, or a LaunchAgent on macOS; opt-in,'
 	@echo '                     not in make all; enable it yourself afterwards)'
+	@echo '  make waybar        symlink the waybar bar config + stylesheet'
 	@echo '  make zsh           copy .zshrc + .p10k.zsh to $(HOME)'
 	@echo '  make bin           copy bin/ to $(APPS)'
 	@echo '  make i3            copy i3/ to $(CONFIG)'
-	@echo '  make polybar       copy polybar/ to $(CONFIG)'
 	@echo
 	@echo 'Maintenance:'
 	@echo '  make status        show what is deployed'
@@ -84,7 +92,7 @@ help:
 
 theme: kitty helix theme-switch
 
-all: theme zsh bin i3 polybar
+all: theme zsh bin waybar i3
 
 # --- symlinked components -----------------------------------------------------
 
@@ -93,6 +101,9 @@ kitty:
 
 helix:
 	$(call link_all,$(HELIX_LINKS))
+
+waybar:
+	$(call link_all,$(WAYBAR_LINKS))
 
 # --- copied components --------------------------------------------------------
 
@@ -134,10 +145,6 @@ i3:
 	@mkdir -p $(CONFIG)
 	@cp -rv i3 $(CONFIG)
 
-polybar:
-	@mkdir -p $(CONFIG)
-	@cp -rv polybar $(CONFIG)
-
 # --- maintenance --------------------------------------------------------------
 
 status:
@@ -148,7 +155,7 @@ status:
 		elif [ -e "$$link" ]; then printf '  %-42s    (regular file, not managed)\n' "$$link"; \
 		else printf '  %-42s    (not deployed)\n' "$$link"; fi; \
 	done
-	@for f in $(SCRIPT_DST) $(AUTO_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin $(CONFIG)/i3 $(CONFIG)/polybar; do \
+	@for f in $(SCRIPT_DST) $(AUTO_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin $(CONFIG)/i3; do \
 		if [ -e "$$f" ]; then printf '  %-42s    (present)\n' "$$f"; \
 		else printf '  %-42s    (not deployed)\n' "$$f"; fi; \
 	done
