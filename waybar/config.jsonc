@@ -65,10 +65,11 @@
     "tooltip": false
   },
 
-  // Same script and interval the polybar config used. It takes any ICAO
-  // station code and is deployed to ~/Apps/bin by `make bin`.
+  // The station code lives in ~/.config/waybar/station, not here: it says
+  // roughly where this machine is and this repository is public. With no
+  // station set the script prints nothing and the module hides itself.
   "custom/weather": {
-    "exec": "$HOME/Apps/bin/get_temp.py KAGS",
+    "exec": "$HOME/Apps/bin/waybar-weather.sh",
     "interval": 90,
     "tooltip": false
   },
