@@ -63,12 +63,12 @@ define link_all
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help theme all zsh bin i3 waybar kitty helix theme-switch theme-auto status diff uninstall
+.PHONY: help theme all zsh bin waybar kitty helix theme-switch theme-auto status diff uninstall
 
 help:
 	@echo 'Dotfiles installer -- nothing is deployed unless you name a target.'
 	@echo
-	@echo '  make theme         kitty + helix + theme-switch (no i3/waybar needed)'
+	@echo '  make theme         kitty + helix + theme-switch (no waybar needed)'
 	@echo '  make all           every component below'
 	@echo
 	@echo 'Components:'
@@ -81,7 +81,6 @@ help:
 	@echo '  make waybar        symlink the waybar bar config + stylesheet'
 	@echo '  make zsh           copy .zshrc + .p10k.zsh to $(HOME)'
 	@echo '  make bin           copy bin/ to $(APPS)'
-	@echo '  make i3            copy i3/ to $(CONFIG)'
 	@echo
 	@echo 'Maintenance:'
 	@echo '  make status        show what is deployed'
@@ -92,7 +91,7 @@ help:
 
 theme: kitty helix theme-switch
 
-all: theme zsh bin waybar i3
+all: theme zsh bin waybar
 
 # --- symlinked components -----------------------------------------------------
 
@@ -141,10 +140,6 @@ bin:
 	@mkdir -p $(APPS)
 	@cp -rv bin $(APPS)
 
-i3:
-	@mkdir -p $(CONFIG)
-	@cp -rv i3 $(CONFIG)
-
 # --- maintenance --------------------------------------------------------------
 
 status:
@@ -155,7 +150,7 @@ status:
 		elif [ -e "$$link" ]; then printf '  %-42s    (regular file, not managed)\n' "$$link"; \
 		else printf '  %-42s    (not deployed)\n' "$$link"; fi; \
 	done
-	@for f in $(SCRIPT_DST) $(AUTO_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin $(CONFIG)/i3; do \
+	@for f in $(SCRIPT_DST) $(AUTO_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin; do \
 		if [ -e "$$f" ]; then printf '  %-42s    (present)\n' "$$f"; \
 		else printf '  %-42s    (not deployed)\n' "$$f"; fi; \
 	done

@@ -12,8 +12,8 @@ make theme-auto   # optional: follow the desktop's light/dark preference
 ```
 
 `make theme` is enough on a machine that only runs kitty and helix, which
-includes any Mac: the i3 and waybar targets are Linux-only and are never
-deployed unless named. `make zsh` adds the shell on top.
+includes any Mac: the waybar target is Linux-only and is never deployed
+unless named. `make zsh` adds the shell on top.
 
 The zsh config expects [powerlevel10k][p10k] to be installed already — it is
 `zsh-theme-powerlevel10k` on Arch and `powerlevel10k` in Homebrew. `.zshrc`
@@ -28,9 +28,9 @@ Everything is opt-in — plain `make` deploys nothing, it just lists the targets
 Pick only what the machine actually needs:
 
 ```sh
-make theme      # kitty + helix + theme-switch (no i3/waybar required)
+make theme      # kitty + helix + theme-switch (no waybar required)
 make all        # every component
-make kitty      # or any single component: helix, theme-switch, zsh, waybar, bin, i3
+make kitty      # or any single component: helix, theme-switch, zsh, waybar, bin
 ```
 
 `make status` shows what is currently deployed; `make uninstall` removes the
