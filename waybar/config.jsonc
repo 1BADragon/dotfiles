@@ -18,6 +18,11 @@
   // Plasma own the reservation fixes the desktop; if waybar reserved as well,
   // the two would stack and windows would start 60px down instead of 30.
   "exclusive": false,
+  // exclusive: false means "reserve nothing", but layer-shell still positions
+  // the surface inside what is left after other reservations, so the bar was
+  // pushed below the Plasma panel. Pulling it back up by the panel's height
+  // puts it over the panel again.
+  "margin-top": -30,
 
   "modules-left": ["custom/weather"],
   "modules-center": ["clock"],
