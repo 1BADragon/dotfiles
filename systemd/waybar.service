@@ -1,0 +1,20 @@
+[Unit]
+Description=Status bar for the Plasma session
+# The bar has nothing to draw on without a graphical session, and should go
+# away with it rather than linger.
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/waybar
+# waybar reloads its config and stylesheet on SIGUSR2, which is what
+# theme-switch already sends when it swaps the palette. Declaring it here means
+# `systemctl --user reload waybar` does the same thing, and neither interferes
+# with the other: theme-switch signals the process directly.
+ExecReload=/bin/kill -USR2 $MAINPID
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=graphical-session.target

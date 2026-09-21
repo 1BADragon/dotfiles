@@ -145,6 +145,23 @@ palette lives in `current-colors.css`, which `theme-switch` rewrites from
 `colors-light.css` or `colors-dark.css` before reloading waybar with `SIGUSR2`.
 The bar therefore follows the same signal kitty and helix do.
 
+### Autostart
+
+`make waybar-auto` installs a user service for the bar. Like `theme-auto` it is
+installed but not enabled, since enabling one changes a running system:
+
+```sh
+make waybar-auto
+systemctl --user enable --now waybar.service
+```
+
+It is bound to `graphical-session.target`, so it starts with the desktop and
+stops with it, and `Restart=on-failure` brings it back if it dies. The unit
+declares `ExecReload` as `SIGUSR2`, so `systemctl --user reload waybar` reloads
+the config and stylesheet in place. `theme-switch` signals the process directly
+rather than going through systemd, so it repaints the bar whether or not the
+service is the thing that started it.
+
 ### Hardware
 
 Module hardware is named for the machine this is deployed on: `BAT0`, the

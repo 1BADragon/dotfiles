@@ -20,6 +20,9 @@ UNIT       := theme-switch.service
 UNIT_DIR   := $(CONFIG)/systemd/user
 UNIT_DST   := $(UNIT_DIR)/$(UNIT)
 
+BAR_UNIT   := waybar.service
+BAR_UNIT_DST := $(UNIT_DIR)/$(BAR_UNIT)
+
 AGENT      := com.github.1badragon.theme-switch.plist
 AGENT_DIR  := $(HOME)/Library/LaunchAgents
 AGENT_DST  := $(AGENT_DIR)/$(AGENT)
@@ -63,7 +66,7 @@ define link_all
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help theme all zsh bin waybar kitty helix theme-switch theme-auto status diff uninstall
+.PHONY: help theme all zsh bin waybar waybar-auto kitty helix theme-switch theme-auto status diff uninstall
 
 help:
 	@echo 'Dotfiles installer -- nothing is deployed unless you name a target.'
@@ -79,6 +82,8 @@ help:
 	@echo '                     (systemd unit, or a LaunchAgent on macOS; opt-in,'
 	@echo '                     not in make all; enable it yourself afterwards)'
 	@echo '  make waybar        symlink the waybar bar config + stylesheet'
+	@echo '  make waybar-auto   install the waybar user service (opt-in, Linux'
+	@echo '                     only, not in make all; enable it yourself)'
 	@echo '  make zsh           copy .zshrc + .p10k.zsh to $(HOME)'
 	@echo '  make bin           copy bin/ to $(APPS)'
 	@echo
@@ -103,6 +108,16 @@ helix:
 
 waybar:
 	$(call link_all,$(WAYBAR_LINKS))
+
+# Same split as theme-auto: the unit is installed but not enabled, since
+# enabling one changes a running system. Linux only -- waybar is a Wayland bar
+# and there is no macOS equivalent to install.
+waybar-auto: waybar
+	@mkdir -p $(UNIT_DIR)
+	@install -m 644 systemd/$(BAR_UNIT) $(BAR_UNIT_DST)
+	@systemctl --user daemon-reload
+	@echo "  installed    $(BAR_UNIT_DST)"
+	@echo "  next         systemctl --user enable --now $(BAR_UNIT)"
 
 # --- copied components --------------------------------------------------------
 
@@ -150,7 +165,7 @@ status:
 		elif [ -e "$$link" ]; then printf '  %-42s    (regular file, not managed)\n' "$$link"; \
 		else printf '  %-42s    (not deployed)\n' "$$link"; fi; \
 	done
-	@for f in $(SCRIPT_DST) $(AUTO_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin; do \
+	@for f in $(SCRIPT_DST) $(AUTO_DST) $(BAR_UNIT_DST) $(HOME)/.zshrc $(HOME)/.p10k.zsh $(APPS)/bin; do \
 		if [ -e "$$f" ]; then printf '  %-42s    (present)\n' "$$f"; \
 		else printf '  %-42s    (not deployed)\n' "$$f"; fi; \
 	done
@@ -181,5 +196,10 @@ else
 		echo "  removed      $(UNIT_DST)"; \
 	fi
 endif
+	@if [ -e "$(BAR_UNIT_DST)" ]; then \
+		systemctl --user disable --now $(BAR_UNIT) 2>/dev/null || true; \
+		rm -f $(BAR_UNIT_DST); systemctl --user daemon-reload; \
+		echo "  removed      $(BAR_UNIT_DST)"; \
+	fi
 	@rm -f $(SCRIPT_DST)
 	@echo "  removed      $(SCRIPT_DST)"
