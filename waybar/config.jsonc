@@ -11,6 +11,14 @@
   "position": "top",
   "height": 30,
 
+  // The space at the top edge is reserved by an empty, always-visible Plasma
+  // panel sitting underneath this bar, not by this bar. plasmashell lays the
+  // desktop out against its own panels only, so a layer-shell exclusive zone
+  // moves windows but leaves desktop icons and widgets underneath. Letting
+  // Plasma own the reservation fixes the desktop; if waybar reserved as well,
+  // the two would stack and windows would start 60px down instead of 30.
+  "exclusive": false,
+
   "modules-left": ["custom/weather"],
   "modules-center": ["clock"],
   // The first three are silent by default and only appear when they have
